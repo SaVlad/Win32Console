@@ -254,6 +254,16 @@ public static class Win32Console {
 			th.Abort();
 		return timedout;
 	}
+	private static string Debug_TranslateEnum<T>(int value) {
+		if(!typeof(T).IsEnum)
+			return "Not enum";
+		List<string> names = new List<string>();
+		var vals = Enum.GetValues(typeof(T)).Cast<int>();
+		foreach(int val in vals)
+			if((value & val) == val)
+				names.Add(Enum.GetName(typeof(T), val));
+		return $"{typeof(T).Name}{{{string.Join(", ", names)}}}";
+	}
 
 	public static void InitConsole() {
 		if(OutputHandle == NULL && !AllocConsole())
@@ -361,7 +371,7 @@ public static class Win32Console {
 		return (ConsoleColor) ((attr[0] & 0xF0) >> 4);
 	}
 
-	public static string Read(int count) {
+	public static string Read() {
 		if(!InputAvailable)
 			return null;
 		StringBuilder sb = new StringBuilder();
@@ -371,31 +381,9 @@ public static class Win32Console {
 			dwCtrlWakeupMask = 0,
 			dwControlKeyState = 0
 		};
-		IntPtr ptr = MallocStructUnmanaged(crcc);
-		if(!ReadConsole(InputHandle, sb, (uint) count, out uint l, ptr)) {
-			FreeStructUnmanaged<CONSOLE_READCONSOLE_CONTROL>(ptr);
+		if(!ReadConsole(InputHandle, sb, 1024U, out uint l, ref crcc))
 			ThrowWin32("Failed to read console");
-		}
-		FreeStructUnmanaged<CONSOLE_READCONSOLE_CONTROL>(ptr);
-		return sb.ToString();
-	}
-	public static string Read(params char[] stopChars) {
-		if(!InputAvailable)
-			return null;
-		StringBuilder sb = new StringBuilder();
-		CONSOLE_READCONSOLE_CONTROL crcc = new CONSOLE_READCONSOLE_CONTROL {
-			nLength = (ulong) SizeOf<CONSOLE_READCONSOLE_CONTROL>(),
-			nInitialChars = 0,
-			dwCtrlWakeupMask = BuildCtrlWakeupMask(stopChars),
-			dwControlKeyState = 0
-		};
-		IntPtr ptr = MallocStructUnmanaged(crcc);
-		if(!ReadConsole(InputHandle, sb, 64U * 1024U, out uint l, ptr)) {
-			FreeStructUnmanaged<CONSOLE_READCONSOLE_CONTROL>(ptr);
-			ThrowWin32("Failed to read console");
-		}
-		FreeStructUnmanaged<CONSOLE_READCONSOLE_CONTROL>(ptr);
-		return sb.ToString();
+		return sb.ToString().Substring(0, (int) l);
 	}
 	public static IInputEvent PeekInputEvent() {
 		if(!InputAvailable)
@@ -431,33 +419,6 @@ public static class Win32Console {
 			}
 		}
 	}
-	public static void WriteInput(string str) {
-		if(!InputAvailable || str == null || str.Length == 0)
-			return;
-		string s = new string(str.Where(chr => !char.IsControl(chr)).ToArray());
-		INPUT_RECORD[] ir = new INPUT_RECORD[s.Length * 2];
-		for(int i = 0, si = 0; i < ir.Length; i = (++si) * 2) {
-			ir[i] = new INPUT_RECORD {
-				EventType = KEY_EVENT,
-				KeyEvent = new KEY_EVENT_RECORD {
-					bKeyDown = true,
-					UnicodeChar = s[si],
-					wVirtualKeyCode = s[si],
-					wRepeatCount = 1
-				}
-			};
-			ir[i + 1] = new INPUT_RECORD {
-				EventType = KEY_EVENT,
-				KeyEvent = new KEY_EVENT_RECORD {
-					bKeyDown = false,
-					UnicodeChar = s[si],
-					wRepeatCount = 1
-				}
-			};
-		}
-		if(!WriteConsoleInput(InputHandle, ir, (uint) ir.Length, out uint l))
-			ThrowWin32("Failed to write console input");
-	}
 	public static bool WaitForInputEvent(int timeout) {
 		if(!InputAvailable)
 			return false;
@@ -465,6 +426,25 @@ public static class Win32Console {
 			while(InputEventsCount == 0)
 				Thread.Sleep(100);
 		}, true);
+	}
+	public static IEnumerable<IInputEvent> PumpInputEvents(bool infinite) {
+		if(!InputAvailable)
+			yield break;
+		IInputEvent ev;
+		if(infinite) {
+			while(true) {
+				WaitForInputEvent(0);
+				ev = NextInputEvent();
+				if(ev != null)
+					yield return ev;
+			}
+		} else {
+			while(InputEventsCount > 0) {
+				ev = NextInputEvent();
+				if(ev != null)
+					yield return ev;
+			}
+		}
 	}
 
 	public static void SetConsoleOutputMode(ConsoleOutputMode mode) {
@@ -476,6 +456,7 @@ public static class Win32Console {
 	public static void SetConsoleInputMode(ConsoleInputMode mode) {
 		if(!InputAvailable)
 			return;
+		System.Diagnostics.Debug.WriteLine(Debug_TranslateEnum<ConsoleInputMode>((int) mode));
 		if(!SetConsoleMode(InputHandle, (uint) mode))
 			ThrowWin32("Failed to set console input mode");
 	}
@@ -803,7 +784,7 @@ public static class Win32Console {
 			[Out] StringBuilder lpBuffer,
 			[In] uint nNumberOfCharsToRead,
 			[Out] out uint lpNumberOfCharsRead,
-			[In, Optional] IntPtr pInputControl);
+			[In] ref CONSOLE_READCONSOLE_CONTROL pInputControl);
 		/// <summary>
 		/// Reads data from a console input buffer and removes it from the buffer.
 		/// </summary>
@@ -1562,10 +1543,10 @@ public static class Win32Console {
 			/// <summary>
 			/// The state of the control keys. This member can be one or more of the
 			/// following values:
-			/// <see cref="CAPSLOCK_ON"/> <see cref="ENHANCED_KEY"/>
-			/// <see cref="LEFT_ALT_PRESSED"/> <see cref="LEFT_CTRL_PRESSED"/>
-			/// <see cref="NUMLOCK_ON"/> <see cref="RIGHT_ALT_PRESSED"/>
-			/// <see cref="RIGHT_CTRL_PRESSED"/> <see cref="SCROLLLOCK_ON"/>
+			/// <see cref="CAPSLOCK_ON"/>, <see cref="ENHANCED_KEY"/>,
+			/// <see cref="LEFT_ALT_PRESSED"/>, <see cref="LEFT_CTRL_PRESSED"/>,
+			/// <see cref="NUMLOCK_ON"/>, <see cref="RIGHT_ALT_PRESSED"/>,
+			/// <see cref="RIGHT_CTRL_PRESSED"/>, <see cref="SCROLLLOCK_ON"/>,
 			/// <see cref="SHIFT_PRESSED"/>
 			/// </summary>
 			public ulong dwControlKeyState;
@@ -1598,7 +1579,16 @@ public static class Win32Console {
 	}
 }
 [Flags]
+public enum InputEventType {
+	None = 0,
+	KeyEvent = 1<<0,
+	MouseEvent = 1<<1,
+	WindowBufferSizeEvent = 1<<2,
+	All = KeyEvent | MouseEvent | WindowBufferSizeEvent
+}
+[Flags]
 public enum ConsoleOutputMode {
+	None = 0,
 	ProcessedOutput = (int) ENABLE_PROCESSED_OUTPUT,
 	WrapAtEolOutput = (int) ENABLE_WRAP_AT_EOL_OUTPUT,
 	VirtualTerminalProcessing = (int) ENABLE_VIRTUAL_TERMINAL_PROCESSING,
@@ -1607,6 +1597,7 @@ public enum ConsoleOutputMode {
 }
 [Flags]
 public enum ConsoleInputMode {
+	None = 0,
 	ExtendedFlags = (int) ENABLE_EXTENDED_FLAGS,
 	EchoInput = (int) ENABLE_ECHO_INPUT,
 	InsertMode = (int) ENABLE_INSERT_MODE,
@@ -1620,6 +1611,7 @@ public enum ConsoleInputMode {
 public interface IInputEvent { }
 [Flags]
 public enum ControlKeyState {
+	None = 0,
 	CapsLock = (int) CAPSLOCK_ON,
 	Enhanced = (int) ENHANCED_KEY,
 	LeftAlt = (int) LEFT_ALT_PRESSED,
