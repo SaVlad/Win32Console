@@ -7,7 +7,13 @@ using System.Text;
 using System.Threading;
 using static Win32Console.NativeApi;
 
+/// <summary>
+/// Managed interface for unmanaged win32 console functions
+/// </summary>
 public static class Win32Console {
+	/// <summary>
+	/// Unmanaged console screen buffer info structure for internal use
+	/// </summary>
 	private static CONSOLE_SCREEN_BUFFER_INFO ScreenBufferInfo {
 		get {
 			if(!GetConsoleScreenBufferInfo(OutputHandle, out CONSOLE_SCREEN_BUFFER_INFO csbi))
@@ -15,12 +21,33 @@ public static class Win32Console {
 			return csbi;
 		}
 	}
+	/// <summary>
+	/// Stack for pushing/popping console output modes
+	/// </summary>
 	private static Stack<ConsoleOutputMode> StoredModesOutput { get; } = new Stack<ConsoleOutputMode>();
+	/// <summary>
+	/// Stack for pushing/popping console input modes
+	/// </summary>
 	private static Stack<ConsoleInputMode> StoredModesInput { get; } = new Stack<ConsoleInputMode>();
+	/// <summary>
+	/// Unmanaged pointer to standard input device (stdin)
+	/// </summary>
 	public static IntPtr InputHandle { get; private set; } = NULL;
+	/// <summary>
+	/// Unmanaged pointer to standard output device (stdout)
+	/// </summary>
 	public static IntPtr OutputHandle { get; private set; } = NULL;
+	/// <summary>
+	/// True, if <see cref="OutputHandle"/> is available to use
+	/// </summary>
 	public static bool OutputAvailable => OutputHandle != NULL;
+	/// <summary>
+	/// True, if <see cref="InputHandle"/> is available to use
+	/// </summary>
 	public static bool InputAvailable => InputHandle != NULL;
+	/// <summary>
+	/// Console cursor horizontal position in character cells
+	/// </summary>
 	public static short CursorX {
 		get {
 			if(!OutputAvailable)
@@ -32,6 +59,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set cursor position");
 		}
 	}
+	/// <summary>
+	/// Console cursor vertical position in character cells
+	/// </summary>
 	public static short CursorY {
 		get {
 			if(!OutputAvailable)
@@ -43,6 +73,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set cursor position");
 		}
 	}
+	/// <summary>
+	/// Console screen buffer current width in character cells
+	/// </summary>
 	public static short BufferWidth {
 		get {
 			if(!OutputAvailable)
@@ -54,6 +87,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set console buffer size");
 		}
 	}
+	/// <summary>
+	/// Console screen buffer current height in character cells
+	/// </summary>
 	public static short BufferHeight {
 		get {
 			if(!OutputAvailable)
@@ -65,6 +101,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set console buffer size");
 		}
 	}
+	/// <summary>
+	/// Console window width current width in character cells
+	/// </summary>
 	public static short WindowWidth {
 		get {
 			if(!OutputAvailable)
@@ -82,6 +121,9 @@ public static class Win32Console {
 				ThrowWin32("Faile to set console window info");
 		}
 	}
+	/// <summary>
+	/// Console window height current width in character cells
+	/// </summary>
 	public static short WindowHeight {
 		get {
 			if(!OutputAvailable)
@@ -99,6 +141,9 @@ public static class Win32Console {
 				ThrowWin32("Faile to set console window info");
 		}
 	}
+	/// <summary>
+	/// Current default console text foreground color
+	/// </summary>
 	public static ConsoleColor ForegroundColor {
 		get {
 			if(!OutputAvailable)
@@ -110,6 +155,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set console text attribute");
 		}
 	}
+	/// <summary>
+	/// Current default console text background color
+	/// </summary>
 	public static ConsoleColor BackgroundColor {
 		get {
 			if(!OutputAvailable)
@@ -121,6 +169,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set console text attribute");
 		}
 	}
+	/// <summary>
+	/// Current console window title text
+	/// </summary>
 	public static string Title {
 		get {
 			if(!OutputAvailable)
@@ -135,6 +186,9 @@ public static class Win32Console {
 				ThrowWin32("Failed to set console title");
 		}
 	}
+	/// <summary>
+	/// True, if blinking cursor is visible
+	/// </summary>
 	public static bool IsCursorVisible {
 		get {
 			if(!OutputAvailable)
@@ -153,6 +207,10 @@ public static class Win32Console {
 				ThrowWin32("Failed to set cursor info");
 		}
 	}
+	/// <summary>
+	/// Amount of input events pending.
+	/// Note that this also includes possible unsupported input events.
+	/// </summary>
 	public static int InputEventsCount {
 		get {
 			if(!OutputAvailable)
@@ -162,6 +220,9 @@ public static class Win32Console {
 			return (int) c;
 		}
 	}
+	/// <summary>
+	/// Current console output mode
+	/// </summary>
 	public static ConsoleOutputMode ConsoleOutputMode {
 		get {
 			if(!OutputAvailable)
@@ -171,6 +232,9 @@ public static class Win32Console {
 			return (ConsoleOutputMode) mode;
 		}
 	}
+	/// <summary>
+	/// Current console input mode
+	/// </summary>
 	public static ConsoleInputMode ConsoleInputMode {
 		get {
 			if(!OutputAvailable)
@@ -180,6 +244,9 @@ public static class Win32Console {
 			return (ConsoleInputMode) mode;
 		}
 	}
+	/// <summary>
+	/// Initial console handles loading
+	/// </summary>
 	static Win32Console() {
 		InputHandle = GetStdHandle(STD_INPUT_HANDLE);
 		if(InputHandle == INVALID_HANDLE_VALUE)
@@ -189,6 +256,10 @@ public static class Win32Console {
 			throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to retrieve STD_OUTPUT_HANDLE");
 	}
 
+	/// <summary>
+	/// Throws new <see cref="Win32Exception"/> with <paramref name="message"/> and native description.
+	/// </summary>
+	/// <param name="message">Custom message</param>
 	private static void ThrowWin32(string message) {
 		try {
 			throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -196,26 +267,69 @@ public static class Win32Console {
 			throw new Win32Exception($"{message}. {exc.Message}");
 		}
 	}
+	/// <summary>
+	/// Return unmanaged size of <typeparamref name="T"/> structure.
+	/// </summary>
+	/// <typeparam name="T">Structure type to measure</typeparam>
+	/// <returns>Unmanaged size of <typeparamref name="T"/> structure</returns>
 	private static int SizeOf<T>() where T : struct => SizeOf(new T());
+	/// <summary>
+	/// Return unmanaged size of <typeparamref name="T"/> structure.
+	/// </summary>
+	/// <typeparam name="T">Structure type to measure</typeparam>
+	/// <param name="obj">Instance of <typeparamref name="T"/> structure</param>
+	/// <returns>Unmanaged size of <typeparamref name="T"/> structure</returns>
 	private static int SizeOf<T>(T obj) where T : struct => Marshal.SizeOf(obj);
+	/// <summary>
+	/// Unused.
+	/// Returns CtrlWakeupMask for specified characters to be used in
+	/// <see cref="CONSOLE_READCONSOLE_CONTROL"/>
+	/// </summary>
+	/// <param name="chars">Characters to include in mask</param>
+	/// <returns>CtrlWakeupMask for <see cref="CONSOLE_READCONSOLE_CONTROL"/></returns>
 	private static ulong BuildCtrlWakeupMask(char[] chars) {
 		ulong mask = 0;
 		foreach(char c in chars)
 			mask |= 1UL << c;
 		return mask;
 	}
+	/// <summary>
+	/// Unused.
+	/// Returns unmanaged pointer to <paramref name="obj"/> structure instance.
+	/// Pointer must be freed with <see cref="FreeStructUnmanaged{T}(IntPtr)"/> later.
+	/// </summary>
+	/// <typeparam name="T">Structure to marshal</typeparam>
+	/// <param name="obj">Instance to marshal</param>
+	/// <returns>Unmanaged pointer for <paramref name="obj"/></returns>
 	private static IntPtr MallocStructUnmanaged<T>(T obj) where T : struct {
 		IntPtr ptr = Marshal.AllocHGlobal(SizeOf(obj));
 		Marshal.StructureToPtr(obj, ptr, false);
 		return ptr;
 	}
+	/// <summary>
+	/// Unused.
+	/// Releases unmanaged pointer created in <see cref="MallocStructUnmanaged{T}(T)"/>
+	/// </summary>
+	/// <typeparam name="T">Structure type <paramref name="ptr"/> points to</typeparam>
+	/// <param name="ptr">Unmanaged pointer to release</param>
 	private static void FreeStructUnmanaged<T>(IntPtr ptr) => Marshal.DestroyStructure(ptr, typeof(T));
+	/// <summary>
+	/// Returns next <see cref="INPUT_RECORD"/> available in system queue.
+	/// Note that this function assumes that queue is not empty.
+	/// </summary>
+	/// <returns>Next available <see cref="INPUT_RECORD"/></returns>
 	private static INPUT_RECORD NextInputRecord() {
 		INPUT_RECORD[] ir = new[] { new INPUT_RECORD() };
 		if(!ReadConsoleInput(InputHandle, ir, 1, out uint l))
 			ThrowWin32("Failed to read console input");
 		return ir[0];
 	}
+	/// <summary>
+	/// Parses native console mode to managed modes
+	/// </summary>
+	/// <param name="mode">Native console mode</param>
+	/// <param name="o">Managed console output mode</param>
+	/// <param name="i">Managed cosnole input mode</param>
 	private static void SeparateModes(uint mode, out ConsoleOutputMode o, out ConsoleInputMode i) {
 		const uint output_mask =
 			ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT |
@@ -228,6 +342,14 @@ public static class Win32Console {
 		o = (ConsoleOutputMode) (mode & output_mask);
 		i = (ConsoleInputMode) (mode & input_mask);
 	}
+	/// <summary>
+	/// Runs function with timeout. If <paramref name="timeout"/> is zero, waits indefinitely.
+	/// If timeout occurs and <paramref name="abort"/> is set, then function is aborted.
+	/// </summary>
+	/// <param name="timeout">Amount of ms to wait for function to finish</param>
+	/// <param name="ts">Function to run</param>
+	/// <param name="abort">If true, then function is aborted on timeout</param>
+	/// <returns>True, is function timed out</returns>
 	private static bool Wait(int timeout, ThreadStart ts, bool abort) {
 		ManualResetEvent _lock = new ManualResetEvent(false);
 		bool timedout = false;
@@ -254,6 +376,13 @@ public static class Win32Console {
 			th.Abort();
 		return timedout;
 	}
+	/// <summary>
+	/// Unused. For debugging purposes.
+	/// Translates <see cref="FlagsAttribute"/> enum <typeparamref name="T"/> value to string
+	/// </summary>
+	/// <typeparam name="T">Enum type</typeparam>
+	/// <param name="value">Integer representation of <typeparamref name="T"/></param>
+	/// <returns>String representation of <paramref name="value"/></returns>
 	private static string Debug_TranslateEnum<T>(int value) {
 		if(!typeof(T).IsEnum)
 			return "Not enum";
@@ -265,6 +394,9 @@ public static class Win32Console {
 		return $"{typeof(T).Name}{{{string.Join(", ", names)}}}";
 	}
 
+	/// <summary>
+	/// Allocates console window. If current application already has one, uses it.
+	/// </summary>
 	public static void InitConsole() {
 		if(OutputHandle == NULL && !AllocConsole())
 			ThrowWin32("Failed to allocate console");
@@ -275,6 +407,11 @@ public static class Win32Console {
 		if(OutputHandle == INVALID_HANDLE_VALUE)
 			ThrowWin32("Failed to retrieve STD_OUTPUT_HANDLE");
 	}
+	/// <summary>
+	/// Writes string representation of <paramref name="o"/> to console output
+	/// </summary>
+	/// <param name="o">Object to write to console output</param>
+	/// <returns>Amount of characters written</returns>
 	public static int Write(object o = null) {
 		if(!OutputAvailable || o == null)
 			return 0;
@@ -285,17 +422,57 @@ public static class Win32Console {
 			ThrowWin32("Failed to write to console");
 		return (int) l;
 	}
+	/// <summary>
+	/// Writes formatted string to console output
+	/// </summary>
+	/// <param name="s">Format string</param>
+	/// <param name="o">Format parameters</param>
+	/// <returns>Amount of characters written</returns>
 	public static int WriteFormat(string s = null, params object[] o) => Write(string.Format(s ?? "", o));
+	/// <summary>
+	/// Writes string representation of <paramref name="o"/> to console output
+	/// and ends it with a newline.
+	/// </summary>
+	/// <param name="o">Object to write to console output</param>
+	/// <returns>Amount of characters written</returns>
 	public static int WriteLine(object o = null) => Write((o?.ToString() ?? "") + "\r\n");
+	/// <summary>
+	/// Writes formatted string to console output and ends it with a newline.
+	/// </summary>
+	/// <param name="s">Format string</param>
+	/// <param name="o">Format parameters</param>
+	/// <returns>Amount of characters written</returns>
 	public static int WriteLineFormat(string s = null, params object[] o) => WriteLine(string.Format(s ?? "", o));
+	/// <summary>
+	/// Writes character to the current cell without advancing cursor position
+	/// </summary>
+	/// <param name="c">Character to write</param>
 	public static void PutChar(char c) => PutChar(CursorX, CursorY, c);
+	/// <summary>
+	/// Writes character to specified cell without moving cursor
+	/// </summary>
+	/// <param name="x">Cell column</param>
+	/// <param name="y">Cell row</param>
+	/// <param name="c">Character to write</param>
 	public static void PutChar(short x, short y, char c) {
 		if(!OutputAvailable)
 			return;
 		if(!WriteConsoleOutputCharacter(OutputHandle, c.ToString(), 1, new COORD { X = x, Y = y }, out uint l))
 			ThrowWin32("Failed to write console output character");
 	}
+	/// <summary>
+	/// Writes string starting from current cell without advancing cursor position.
+	/// Note that this function support control characters: \r, \n, \b, \f, \0
+	/// </summary>
+	/// <param name="s">String to write</param>
 	public static void PutString(string s) => PutString(CursorX, CursorY, s ?? "");
+	/// <summary>
+	/// Writes string starting from specified cell without moving cursor.
+	/// Note that this function support control characters: \r, \n, \b, \f, \0
+	/// </summary>
+	/// <param name="x">Cell column</param>
+	/// <param name="y">Cell row</param>
+	/// <param name="s">String to write</param>
 	public static void PutString(short x, short y, string s) {
 		if(s == null || s.Length == 0)
 			return;
@@ -327,14 +504,36 @@ public static class Win32Console {
 			}
 		}
 	}
+	/// <summary>
+	/// Changes current cell's color
+	/// </summary>
+	/// <param name="fore">Foreground color</param>
+	/// <param name="back">Background color</param>
 	public static void SetColor(ConsoleColor fore, ConsoleColor back) => SetColor(CursorX, CursorY, fore, back);
+	/// <summary>
+	/// Changes specified cell's color
+	/// </summary>
+	/// <param name="x">Cell column</param>
+	/// <param name="y">Cell row</param>
+	/// <param name="fore">Foreground color</param>
+	/// <param name="back">Background color</param>
 	public static void SetColor(short x, short y, ConsoleColor fore, ConsoleColor back) {
 		if(!OutputAvailable)
 			return;
 		if(!WriteConsoleOutputAttribute(OutputHandle, new ushort[] { (ushort) ((short) fore | (short) ((short) back << 4)) }, 1, new COORD { X = x, Y = y }, out uint l))
 			ThrowWin32("Failed to write console output attribute");
 	}
+	/// <summary>
+	/// Returns character written at current cell
+	/// </summary>
+	/// <returns>Character at cursor</returns>
 	public static char GetChar() => GetChar(CursorX, CursorY);
+	/// <summary>
+	/// Returns character written at specified cell
+	/// </summary>
+	/// <param name="x">Cell column</param>
+	/// <param name="y">Cell row</param>
+	/// <returns>Character at specified cell</returns>
 	public static char GetChar(short x, short y) {
 		if(!OutputAvailable)
 			return '\0';
@@ -343,7 +542,19 @@ public static class Win32Console {
 			ThrowWin32("Failed to read console output character");
 		return sb.ToString()[0];
 	}
+	/// <summary>
+	/// Returns string with specified length written from cursor position and after.
+	/// </summary>
+	/// <param name="length">Amount of characters to read</param>
+	/// <returns>String written in cells</returns>
 	public static string GetString(int length) => GetString(CursorX, CursorY, length);
+	/// <summary>
+	/// Returns string with specified length written from specified cell and after.
+	/// </summary>
+	/// <param name="x">Cell column</param>
+	/// <param name="y">Cell row</param>
+	/// <param name="length">Amount of characters to read</param>
+	/// <returns>String written in cells</returns>
 	public static string GetString(short x, short y, int length) {
 		if(!OutputAvailable)
 			return null;
@@ -352,7 +563,15 @@ public static class Win32Console {
 			ThrowWin32("Failed to read console output character");
 		return sb.ToString();
 	}
+	/// <summary>
+	/// Returns foreground color set on cursor cell
+	/// </summary>
+	/// <returns>Foreground color of cursor cell</returns>
 	public static ConsoleColor GetForegroundColor() => GetForegroundColor(CursorX, CursorY);
+	/// <summary>
+	/// Returns foreground color set on specified cell
+	/// </summary>
+	/// <returns>Foreground color of specified cell</returns>
 	public static ConsoleColor GetForegroundColor(short x, short y) {
 		if(!OutputAvailable)
 			return ForegroundColor;
@@ -361,7 +580,15 @@ public static class Win32Console {
 			ThrowWin32("Failed to read console output attribute");
 		return (ConsoleColor) (attr[0] & 0xF);
 	}
+	/// <summary>
+	/// Returns background color set on cursor cell
+	/// </summary>
+	/// <returns>Background color of cursor cell</returns>
 	public static ConsoleColor GetBackgroundColor() => GetBackgroundColor(CursorX, CursorY);
+	/// <summary>
+	/// Returns background color set on specified cell
+	/// </summary>
+	/// <returns>Background color of specified cell</returns>
 	public static ConsoleColor GetBackgroundColor(short x, short y) {
 		if(!OutputAvailable)
 			return ForegroundColor;
@@ -371,6 +598,10 @@ public static class Win32Console {
 		return (ConsoleColor) ((attr[0] & 0xF0) >> 4);
 	}
 
+	/// <summary>
+	/// Reads string from console input. Behaviour depends on <see cref="ConsoleInputMode"/>
+	/// </summary>
+	/// <returns>String read from console input</returns>
 	public static string Read() {
 		if(!InputAvailable)
 			return null;
@@ -385,6 +616,13 @@ public static class Win32Console {
 			ThrowWin32("Failed to read console");
 		return sb.ToString().Substring(0, (int) l);
 	}
+	/// <summary>
+	/// Returns next supported input event without removing it from queue or null
+	/// if queue is empty, or no supported events found.
+	/// Note that this function removes from queue any unsupported input events it
+	/// meets on its way.
+	/// </summary>
+	/// <returns>Next supported input event</returns>
 	public static IInputEvent PeekInputEvent() {
 		if(!InputAvailable)
 			return null;
@@ -402,6 +640,13 @@ public static class Win32Console {
 			}
 		}
 	}
+	/// <summary>
+	/// Returns next supported input event removing it from queue or null,
+	/// if queue is empty or no supported events found.
+	/// Note that this function removes from queue any unsupported input events it
+	/// meets on its way.
+	/// </summary>
+	/// <returns>Next supported input event</returns>
 	public static IInputEvent NextInputEvent() {
 		if(!InputAvailable)
 			return null;
@@ -419,6 +664,14 @@ public static class Win32Console {
 			}
 		}
 	}
+	/// <summary>
+	/// Blocks thread until there is any input events pending until timeout occurs.
+	/// If <paramref name="timeout"/> is zero, waits indefinitely.
+	/// Returns True, if new event occured before timeout was hit.
+	/// Note that this function does not distinguish supported and unsupported events.
+	/// </summary>
+	/// <param name="timeout">Timeout in ms</param>
+	/// <returns></returns>
 	public static bool WaitForInputEvent(int timeout) {
 		if(!InputAvailable)
 			return false;
@@ -427,6 +680,13 @@ public static class Win32Console {
 				Thread.Sleep(100);
 		}, true);
 	}
+	/// <summary>
+	/// Returns supported input events forever or until queue is empty.
+	/// Note that there is no good way of stopping it once it ran with
+	/// <paramref name="infinite"/> flag set.
+	/// </summary>
+	/// <param name="infinite">If true, runs forever</param>
+	/// <returns></returns>
 	public static IEnumerable<IInputEvent> PumpInputEvents(bool infinite) {
 		if(!InputAvailable)
 			yield break;
@@ -447,12 +707,20 @@ public static class Win32Console {
 		}
 	}
 
+	/// <summary>
+	/// Changes console output mode to <paramref name="mode"/>
+	/// </summary>
+	/// <param name="mode">Console output mode to set</param>
 	public static void SetConsoleOutputMode(ConsoleOutputMode mode) {
 		if(!OutputAvailable)
 			return;
 		if(!SetConsoleMode(OutputHandle, (uint) mode))
 			ThrowWin32("Failed to set console output mode");
 	}
+	/// <summary>
+	/// Changes console input mode to <paramref name="mode"/>
+	/// </summary>
+	/// <param name="mode">Console input mode to set</param>
 	public static void SetConsoleInputMode(ConsoleInputMode mode) {
 		if(!InputAvailable)
 			return;
@@ -460,6 +728,13 @@ public static class Win32Console {
 		if(!SetConsoleMode(InputHandle, (uint) mode))
 			ThrowWin32("Failed to set console input mode");
 	}
+	/// <summary>
+	/// Stores current console output mode to internal stack available to be popped
+	/// later with <see cref="PopConsoleOutputMode"/>, changes it to specified mode
+	/// and returns old one.
+	/// </summary>
+	/// <param name="mode">New console output mode to set</param>
+	/// <returns>Old console output mode</returns>
 	public static ConsoleOutputMode PushConsoleOutputMode(ConsoleOutputMode mode) {
 		if(!OutputAvailable)
 			return 0;
@@ -468,6 +743,13 @@ public static class Win32Console {
 		SetConsoleOutputMode(mode);
 		return old;
 	}
+	/// <summary>
+	/// Stores current console input mode to internal stack available to be popped
+	/// later with <see cref="PopConsoleInputMode"/>, changes it to specified mode
+	/// and returns old one.
+	/// </summary>
+	/// <param name="mode">New console input mode to set</param>
+	/// <returns>Old console input mode</returns>
 	public static ConsoleInputMode PushConsoleInputMode(ConsoleInputMode mode) {
 		if(!InputAvailable)
 			return 0;
@@ -476,6 +758,11 @@ public static class Win32Console {
 		SetConsoleInputMode(mode);
 		return old;
 	}
+	/// <summary>
+	/// Retrieves stored with <see cref="PushConsoleOutputMode(ConsoleOutputMode)"/>
+	/// console output mode from of of internal stack and sets it returning old one.
+	/// </summary>
+	/// <returns>Old console output mode</returns>
 	public static ConsoleOutputMode PopConsoleOutputMode() {
 		if(!OutputAvailable || StoredModesOutput.Count == 0)
 			return 0;
@@ -483,6 +770,11 @@ public static class Win32Console {
 		SetConsoleOutputMode(StoredModesOutput.Pop());
 		return old;
 	}
+	/// <summary>
+	/// Retrieves stored with <see cref="PushConsoleInputMode(ConsoleInputMode)"/>
+	/// console input mode from of of internal stack and sets it returning old one.
+	/// </summary>
+	/// <returns>Old console input mode</returns>
 	public static ConsoleInputMode PopConsoleInputMode() {
 		if(!InputAvailable || StoredModesInput.Count == 0)
 			return 0;
@@ -490,103 +782,426 @@ public static class Win32Console {
 		SetConsoleInputMode(StoredModesInput.Pop());
 		return old;
 	}
+	/// <summary>
+	/// Sets exact output mode flags without changing the rest
+	/// </summary>
+	/// <param name="flags">Console output mode flags to set</param>
 	public static void SetConsoleOutputModeFlags(ConsoleOutputMode flags) {
 		if(!OutputAvailable)
 			return;
 		SetConsoleOutputMode(ConsoleOutputMode | flags);
 	}
+	/// <summary>
+	/// Sets exact input mode flags without changing the rest
+	/// </summary>
+	/// <param name="flags">Console input mode flags to set</param>
 	public static void SetConsoleInputModeFlags(ConsoleInputMode flags) {
 		if(!InputAvailable)
 			return;
 		SetConsoleInputMode(ConsoleInputMode | flags);
 	}
+	/// <summary>
+	/// Clears exact output mode flags without changing the rest
+	/// </summary>
+	/// <param name="flags">Console output mode flags to set</param>
 	public static void ClearConsoleOutputModeFlags(ConsoleOutputMode flags) {
 		if(!OutputAvailable)
 			return;
 		SetConsoleOutputMode(ConsoleOutputMode & ~flags);
 	}
+	/// <summary>
+	/// Clears exact input mode flags without changing the rest
+	/// </summary>
+	/// <param name="flags">Console input mode flags to set</param>
 	public static void ClearConsoleInputModeFlags(ConsoleInputMode flags) {
 		if(!InputAvailable)
 			return;
 		SetConsoleInputMode(ConsoleInputMode & ~flags);
 	}
+	/// <summary>
+	/// Toggles exact output mode flags without changing the rest
+	/// </summary>
+	/// <param name="flags">Console output mode flags to set</param>
 	public static void ToggleConsoleOutputModeFlags(ConsoleOutputMode flags) {
 		if(!OutputAvailable)
 			return;
 		SetConsoleOutputMode(ConsoleOutputMode ^ flags);
 	}
+	/// <summary>
+	/// Toggles exact input mode flags without changing the rest
+	/// </summary>
+	/// <param name="flags">Console input mode flags to set</param>
 	public static void ToggleConsoleInputModeFlags(ConsoleInputMode flags) {
 		if(!InputAvailable)
 			return;
 		SetConsoleInputMode(ConsoleInputMode ^ flags);
 	}
 
+	/// <summary>
+	/// Unmanaged Win32 API for console functions
+	/// </summary>
 	public static class NativeApi {
 		#region Constants
+		/// <summary>
+		/// Handle value returned if something went wrong
+		/// </summary>
 		public static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
+		/// <summary>
+		/// Zero pointer
+		/// </summary>
 		public static readonly IntPtr NULL = IntPtr.Zero;
+		/// <summary>
+		/// The standard input device. Initially, this is the console input buffer, CONIN$.
+		/// </summary>
 		public const uint STD_INPUT_HANDLE = unchecked((uint) -10);
+		/// <summary>
+		/// The standard output device. Initially, this is the active console screen buffer, CONOUT$.
+		/// </summary>
 		public const uint STD_OUTPUT_HANDLE = unchecked((uint) -11);
+		/// <summary>
+		/// The standard error device. Initially, this is the active console screen buffer, CONOUT$.
+		/// </summary>
 		public const uint STD_ERROR_HANDLE = unchecked((uint) -12);
+		/// <summary>
+		/// <see cref="CONSOLE_SELECTION_INFO.dwFlags"/>. No selection
+		/// </summary>
 		public const uint CONSOLE_NO_SELECTION = 0x0000;
+		/// <summary>
+		/// <see cref="CONSOLE_SELECTION_INFO.dwFlags"/>. Selection has begun
+		/// </summary>
 		public const uint CONSOLE_SELECTION_IN_PROGRESS = 0x0001;
+		/// <summary>
+		/// <see cref="CONSOLE_SELECTION_INFO.dwFlags"/>. Selection rectangle is not empty
+		/// </summary>
 		public const uint CONSOLE_SELECTION_NOT_EMPTY = 0x0002;
+		/// <summary>
+		/// <see cref="CONSOLE_SELECTION_INFO.dwFlags"/>. Selecting with the mouse
+		/// </summary>
 		public const uint CONSOLE_MOUSE_SELECTION = 0x0004;
+		/// <summary>
+		/// <see cref="CONSOLE_SELECTION_INFO.dwFlags"/>. Mouse is down
+		/// </summary>
 		public const uint CONSOLE_MOUSE_DOWN = 0x0008;
-		public const uint ERROR_NOT_ENOUGH_MEMORY = 0x8;
+		/// <summary>
+		/// <see cref="INPUT_RECORD.EventType"/>. The <see cref="INPUT_RECORD.FocusEvent"/>
+		/// member contains a valid <see cref="FOCUS_EVENT_RECORD"/> structure. These events
+		/// are used internally and should be ignored.
+		/// </summary>
 		public const ushort FOCUS_EVENT = 0x0010;
+		/// <summary>
+		/// <see cref="INPUT_RECORD.EventType"/>. The <see cref="INPUT_RECORD.KeyEvent"/>
+		/// member contains a valid <see cref="KEY_EVENT_RECORD"/> structure.
+		/// </summary>
 		public const ushort KEY_EVENT = 0x0001;
+		/// <summary>
+		/// <see cref="INPUT_RECORD.EventType"/>. The <see cref="INPUT_RECORD.MenuEvent"/>
+		/// member contains a valid <see cref="MENU_EVENT_RECORD"/> structure. These events
+		/// are used internally and should be ignored.
+		/// </summary>
 		public const ushort MENU_EVENT = 0x0008;
+		/// <summary>
+		/// <see cref="INPUT_RECORD.EventType"/>. The <see cref="INPUT_RECORD.MouseEvent"/>
+		/// member contains a valid <see cref="MOUSE_EVENT_RECORD"/> structure.
+		/// </summary>
 		public const ushort MOUSE_EVENT = 0x0002;
+		/// <summary>
+		/// <see cref="INPUT_RECORD.EventType"/>. The <see cref="INPUT_RECORD.WindowBufferSizeEvent"/>
+		/// member contains a valid <see cref="WINDOW_BUFFER_SIZE_RECORD"/> structure.
+		/// </summary>
 		public const ushort WINDOW_BUFFER_SIZE_EVENT = 0x0004;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The CAPS LOCK light is on.
+		/// </summary>
 		public const uint CAPSLOCK_ON = 0x0080;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The key is enhanced.
+		/// </summary>
 		public const uint ENHANCED_KEY = 0x0100;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The left ALT key is pressed.
+		/// </summary>
 		public const uint LEFT_ALT_PRESSED = 0x0002;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The left CTRL key is pressed.
+		/// </summary>
 		public const uint LEFT_CTRL_PRESSED = 0x0008;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The NUM LOCK light is on.
+		/// </summary>
 		public const uint NUMLOCK_ON = 0x0020;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The right ALT key is pressed.
+		/// </summary>
 		public const uint RIGHT_ALT_PRESSED = 0x0001;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The right CTRL key is pressed.
+		/// </summary>
 		public const uint RIGHT_CTRL_PRESSED = 0x0004;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The SCROLL LOCK light is on.
+		/// </summary>
 		public const uint SCROLLLOCK_ON = 0x0040;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwControlKeyState"/> and 
+		/// <see cref="KEY_EVENT_RECORD.dwControlKeyState"/>. The SHIFT key is pressed.
+		/// </summary>
 		public const uint SHIFT_PRESSED = 0x0010;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwButtonState"/>. The leftmost mouse button.
+		/// </summary>
 		public const uint FROM_LEFT_1ST_BUTTON_PRESSED = 0x0001;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwButtonState"/>. The second button from the left.
+		/// </summary>
 		public const uint FROM_LEFT_2ND_BUTTON_PRESSED = 0x0004;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwButtonState"/>. The third button from the left.
+		/// </summary>
 		public const uint FROM_LEFT_3RD_BUTTON_PRESSED = 0x0008;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwButtonState"/>. The fourth button from the left.
+		/// </summary>
 		public const uint FROM_LEFT_4TH_BUTTON_PRESSED = 0x0010;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwButtonState"/>. The rightmost mouse button.
+		/// </summary>
 		public const uint RIGHTMOST_BUTTON_PRESSED = 0x0002;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwEventFlags"/>. The second click (button press) of a
+		/// double-click occurred. The first click is returned as a regular button-press event.
+		/// </summary>
 		public const uint DOUBLE_CLICK = 0x0002;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwEventFlags"/>. The horizontal mouse wheel was moved.
+		/// If the high word of the <see cref="MOUSE_EVENT_RECORD.dwButtonState"/> member
+		/// contains a positive value, the wheel was rotated to the right.Otherwise, the wheel
+		/// was rotated to the left.
+		/// </summary>
 		public const uint MOUSE_HWHEELED = 0x0008;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwEventFlags"/>. A change in mouse position occurred.
+		/// </summary>
 		public const uint MOUSE_MOVED = 0x0001;
+		/// <summary>
+		/// <see cref="MOUSE_EVENT_RECORD.dwEventFlags"/>.The vertical mouse wheel was moved. 
+		/// If the high word of the <see cref="MOUSE_EVENT_RECORD.dwButtonState"/> member
+		/// contains a positive value, the wheel was rotated forward, away from the user.
+		/// Otherwise, the wheel was rotated backward, toward the user.
+		/// </summary>
 		public const uint MOUSE_WHEELED = 0x0004;
+		/// <summary>
+		/// Character attribute. Text color contains blue.
+		/// </summary>
 		public const ushort FOREGROUND_BLUE = 0x0001;
+		/// <summary>
+		/// Character attribute. Text color contains green.
+		/// </summary>
 		public const ushort FOREGROUND_GREEN = 0x0002;
+		/// <summary>
+		/// Character attribute. Text color contains red.
+		/// </summary>
 		public const ushort FOREGROUND_RED = 0x0003;
+		/// <summary>
+		/// Character attribute. Text color is intensified.
+		/// </summary>
 		public const ushort FOREGROUND_INTENSITY = 0x0008;
+		/// <summary>
+		/// Character attribute. Background color contains blue.
+		/// </summary>
 		public const ushort BACKGROUND_BLUE = 0x0010;
+		/// <summary>
+		/// Character attribute. Background color contains green.
+		/// </summary>
 		public const ushort BACKGROUND_GREEN = 0x0020;
+		/// <summary>
+		/// Character attribute. Background color contains red.
+		/// </summary>
 		public const ushort BACKGROUND_RED = 0x0040;
+		/// <summary>
+		/// Character attribute. Background color is intensified.
+		/// </summary>
 		public const ushort BACKGROUND_INTENSITY = 0x0080;
+		/// <summary>
+		/// Character attribute. Leading byte.
+		/// </summary>
 		public const ushort COMMON_LVB_LEADING_BYTE = 0x0100;
+		/// <summary>
+		/// Character attribute. Trailing byte.
+		/// </summary>
 		public const ushort COMMON_LVB_TRAILING_BYTE = 0x0200;
+		/// <summary>
+		/// Character attribute. Top horizontal.
+		/// </summary>
 		public const ushort COMMON_LVB_GRID_HORIZONTAL = 0x0400;
+		/// <summary>
+		/// Character attribute. Left vertical.
+		/// </summary>
 		public const ushort COMMON_LVB_GRID_LVERTICAL = 0x0800;
+		/// <summary>
+		/// Character attribute. Right vertical.
+		/// </summary>
 		public const ushort COMMON_LVB_GRID_RVERTICAL = 0x1000;
+		/// <summary>
+		/// Character attribute. Reverse foreground and background attribute.
+		/// </summary>
 		public const ushort COMMON_LVB_REVERSE_VIDEO = 0x4000;
+		/// <summary>
+		/// Character attribute. Underscore.
+		/// </summary>
 		public const ushort COMMON_LVB_UNDERSCORE = 0x8000;
+		/// <summary>
+		/// <see cref="GetSystemMetrics(uint)"/> parameter. The minimum width of a window, in pixels. 
+		/// </summary>
 		public const uint SM_CXMIN = 28;
+		/// <summary>
+		/// <see cref="GetSystemMetrics(uint)"/> parameter. The minimum height of a window, in pixels. 
+		/// </summary>
 		public const uint SM_CYMIN = 29;
+		/// <summary>
+		/// Console mode appliable to input handle. Characters read by the
+		/// <see cref="ReadConsole"/> function are written to the active screen buffer as they
+		/// are read. This mode can be used only if the <see cref="ENABLE_LINE_INPUT"/> mode is
+		/// also enabled.
+		/// </summary>
 		public const uint ENABLE_ECHO_INPUT = 0x0004;
+		/// <summary>
+		/// Console mode appliable to input handle. Required for
+		/// <see cref="ENABLE_QUICK_EDIT_MODE"/> and <see cref="ENABLE_INSERT_MODE"/>
+		/// </summary>
 		public const uint ENABLE_EXTENDED_FLAGS = 0x0080;
+		/// <summary>
+		/// Console mode appliable to input handle. When enabled, text entered in a console
+		/// window will be inserted at the current cursor location and all text following that
+		/// location will not be overwritten. When disabled, all following text will be
+		/// overwritten.
+		/// </summary>
 		public const uint ENABLE_INSERT_MODE = 0x0020;
+		/// <summary>
+		/// Console mode appliable to input handle. The <see cref="ReadConsole"/> function
+		/// returns only when a carriage return character is read. If this mode is disabled,
+		/// the functions return when one or more characters are available.
+		/// </summary>
 		public const uint ENABLE_LINE_INPUT = 0x0002;
+		/// <summary>
+		/// Console mode appliable to input handle. If the mouse pointer is within the borders
+		/// of the console window and the window has the keyboard focus, mouse events
+		/// generated by mouse movement and button presses are placed in the input buffer.
+		/// These events are discarded by <see cref="ReadConsole"/>, even when this mode
+		/// is enabled.
+		/// </summary>
 		public const uint ENABLE_MOUSE_INPUT = 0x0010;
+		/// <summary>
+		/// Console mode appliable to input handle. CTRL+C is processed by the system and is
+		/// not placed in the input buffer. If the input buffer is being read by
+		/// <see cref="ReadConsole"/>, other control keys are processed by the system and are
+		/// not returned in the <see cref="ReadConsole"/> buffer. If the
+		/// <see cref="ENABLE_LINE_INPUT"/> mode is also enabled, backspace, carriage return,
+		/// and line feed characters are handled by the system.
+		/// </summary>
 		public const uint ENABLE_PROCESSED_INPUT = 0x0001;
+		/// <summary>
+		/// Console mode appliable to input handle. This flag enables the user to use the
+		/// mouse to select and edit text. Requires <see cref="ENABLE_EXTENDED_FLAGS"/>.
+		/// </summary>
 		public const uint ENABLE_QUICK_EDIT_MODE = 0x0040;
+		/// <summary>
+		/// Console mode appliable to input handle. User interactions that change the size of
+		/// the console screen buffer are reported in the console's input buffer.
+		/// Information about these events can be read from the input buffer by applications
+		/// using the <see cref="ReadConsoleInput"/> function, but not by those using
+		/// <see cref="ReadConsole"/>.
+		/// </summary>
 		public const uint ENABLE_WINDOW_INPUT = 0x0008;
+		/// <summary>
+		/// Console mode appliable to input handle. Setting this flag directs the Virtual
+		/// Terminal processing engine to convert user input received by the console window
+		/// into Console Virtual Terminal Sequences that can be retrieved by a supporting
+		/// application through <see cref="WriteConsole"/> functions. <para></para>
+		/// The typical usage of
+		/// this flag is intended in conjunction with
+		/// <see cref="ENABLE_VIRTUAL_TERMINAL_PROCESSING"/> on the output handle to connect
+		/// to an application that communicates exclusively via virtual terminal sequences.
+		/// </summary>
 		public const uint ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
+		/// <summary>
+		/// Console mode appliable to output handle. Characters written by the
+		/// <see cref="WriteConsole"/> function or echoed by the <see cref="ReadConsole"/>
+		/// function are parsed for ASCII control sequences, and the correct action is
+		/// performed. Backspace, tab, bell, carriage return, and line feed characters are
+		/// processed.
+		/// </summary>
 		public const uint ENABLE_PROCESSED_OUTPUT = 0x0001;
+		/// <summary>
+		/// Console mode appliable to output handle. When writing with <see cref="WriteConsole"/>
+		/// or echoing with <see cref="ReadConsole"/>, the cursor moves to the beginning of
+		/// the next row when it reaches the end of the current row. This causes the
+		/// rows displayed in the console window to scroll up automatically when the
+		/// cursor advances beyond the last row in the window. It also causes the contents
+		/// of the console screen buffer to scroll up (discarding the top row of the console
+		/// screen buffer) when the cursor advances beyond the last row in the console
+		/// screen buffer. If this mode is disabled, the last character in the row is
+		/// overwritten with any subsequent characters.
+		/// </summary>
 		public const uint ENABLE_WRAP_AT_EOL_OUTPUT = 0x0002;
+		/// <summary>
+		/// Console mode appliable to output handle. When writing with <see cref="WriteConsole"/>,
+		/// characters are parsed for VT100 and similar control character sequences that control
+		/// cursor movement, color/font mode, and other operations that can also be performed
+		/// via the existing Console APIs. For more information, see Console Virtual Terminal
+		/// Sequences.
+		/// </summary>
 		public const uint ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+		/// <summary>
+		/// Console mode appliable to output handle. When writing with <see cref="WriteConsole"/>,
+		/// this adds an additional state to end-of-line wrapping that can delay the cursor
+		/// move and buffer scroll operations. <para></para>
+		/// Normally when <see cref="ENABLE_WRAP_AT_EOL_OUTPUT"/> is set and text reaches
+		/// the end of the line, the cursor will immediately move to the next line and the
+		/// contents of the buffer will scroll up by one line.In contrast with this flag set,
+		/// the scroll operation and cursor move is delayed until the next character arrives.
+		/// The written character will be printed in the final position on the line and the
+		/// cursor will remain above this character as if <see cref="ENABLE_WRAP_AT_EOL_OUTPUT"/>
+		/// was off, but the next printable character will be printed as if
+		/// <see cref="ENABLE_WRAP_AT_EOL_OUTPUT"/> is on. No overwrite will occur. Specifically,
+		/// the cursor quickly advances down to the following line, a scroll is performed if
+		/// necessary, the character is printed, and the cursor advances one more position. <para></para>
+		/// The typical usage of this flag is intended in conjunction with setting
+		/// <see cref="ENABLE_VIRTUAL_TERMINAL_PROCESSING"/> to better emulate a terminal
+		/// emulator where writing the final character on the screen (in the bottom right corner)
+		/// without triggering an immediate scroll is the desired behavior.
+		/// </summary>
 		public const uint ENABLE_NEWLINE_AUTO_RETURN = 0x0008;
+		/// <summary>
+		/// Console mode appliable to output handle. The APIs for writing character attributes
+		/// including <see cref="WriteConsoleOutput"/> and
+		/// <see cref="WriteConsoleOutputAttribute"/> allow the usage of flags from character
+		/// attributes to adjust the color of the foreground and background of text.
+		/// Additionally, a range of DBCS flags was specified with the COMMON_LVB prefix.
+		/// Historically, these flags only functioned in DBCS code pages for Chinese, Japanese,
+		/// and Korean languages. With exception of the leading byte and trailing byte flags,
+		/// the remaining flags describing line drawing and reverse video (swap foreground and
+		/// background colors) can be useful for other languages to emphasize portions of output.
+		/// <para></para> With exception of the leading byte and trailing byte flags,
+		/// the remaining flags describing line drawing and reverse video(swap foreground and
+		/// background colors) can be useful for other languages to emphasize portions of output.
+		/// <para></para> Setting this console mode flag will allow these attributes to be used
+		/// in every code page on every language.
+		/// <para></para> It is off by default to maintain compatibility with known applications
+		/// that have historically taken advantage of the console ignoring these flags on
+		/// non-CJK machines to store bits in these fields for their own purposes or by accident.
+		/// <para></para> Note that using the <see cref="ENABLE_VIRTUAL_TERMINAL_PROCESSING"/>
+		/// mode can result in LVB grid and reverse video flags being set while this flag is
+		/// still off if the attached application requests underlining or inverse video via
+		/// Console Virtual Terminal Sequences.
+		/// </summary>
 		public const uint ENABLE_LVB_GRID_WORLDWIDE = 0x0010;
 		#endregion
 
@@ -1578,65 +2193,259 @@ public static class Win32Console {
 		#endregion
 	}
 }
-[Flags]
-public enum InputEventType {
-	None = 0,
-	KeyEvent = 1<<0,
-	MouseEvent = 1<<1,
-	WindowBufferSizeEvent = 1<<2,
-	All = KeyEvent | MouseEvent | WindowBufferSizeEvent
-}
+/// <summary>
+/// Possible values for <see cref="Win32Console.SetConsoleOutputMode"/> parameter. Can be combined.
+/// </summary>
 [Flags]
 public enum ConsoleOutputMode {
 	None = 0,
+	/// <summary>
+	/// Characters written by the <see cref="Win32Console.Write(object)"/> function or echoed by
+	/// the <see cref="Win32Console.Read"/> function are parsed for ASCII control sequences,
+	/// and the correct action is performed. Backspace, tab, bell, carriage return, and line
+	/// feed characters are processed.
+	/// </summary>
 	ProcessedOutput = (int) ENABLE_PROCESSED_OUTPUT,
+	/// <summary>
+	/// When writing with <see cref="Win32Console.Write(object)"/> or echoing with
+	/// <see cref="Win32Console.Read"/>, the cursor moves to the beginning of
+	/// the next row when it reaches the end of the current row. This causes the
+	/// rows displayed in the console window to scroll up automatically when the
+	/// cursor advances beyond the last row in the window. It also causes the contents
+	/// of the console screen buffer to scroll up (discarding the top row of the console
+	/// screen buffer) when the cursor advances beyond the last row in the console
+	/// screen buffer. If this mode is disabled, the last character in the row is
+	/// overwritten with any subsequent characters.
+	/// </summary>
 	WrapAtEolOutput = (int) ENABLE_WRAP_AT_EOL_OUTPUT,
+	/// <summary>
+	/// When writing with <see cref="Win32Console.Write(object)"/>, characters are parsed for
+	/// VT100 and similar control character sequences that control cursor movement,
+	/// color/font mode, and other operations that can also be performed via the existing
+	/// Console APIs. For more information, see Console Virtual Terminal Sequences.
+	/// </summary>
 	VirtualTerminalProcessing = (int) ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+	/// <summary>
+	/// Console mode appliable to output handle. When writing with
+	/// <see cref="Win32Console.Write(object)"/>, this adds an additional state to
+	/// end-of-line wrapping that can delay the cursor move and buffer scroll operations.
+	/// <para></para> Normally when <see cref="WrapAtEolOutput"/> is set and text reaches
+	/// the end of the line, the cursor will immediately move to the next line and the
+	/// contents of the buffer will scroll up by one line.In contrast with this flag set,
+	/// the scroll operation and cursor move is delayed until the next character arrives.
+	/// The written character will be printed in the final position on the line and the
+	/// cursor will remain above this character as if <see cref="WrapAtEolOutput"/>
+	/// was off, but the next printable character will be printed as if
+	/// <see cref="WrapAtEolOutput"/> is on. No overwrite will occur. Specifically,
+	/// the cursor quickly advances down to the following line, a scroll is performed if
+	/// necessary, the character is printed, and the cursor advances one more position.
+	/// <para></para> The typical usage of this flag is intended in conjunction with setting
+	/// <see cref="VirtualTerminalProcessing"/> to better emulate a terminal
+	/// emulator where writing the final character on the screen (in the bottom right corner)
+	/// without triggering an immediate scroll is the desired behavior.
+	/// </summary>
 	NewlineAutoReturn = (int) ENABLE_NEWLINE_AUTO_RETURN,
+	/// <summary>
+	/// Console mode appliable to output handle. The APIs for writing character attributes
+	/// allow the usage of flags from character attributes to adjust the color of the foreground
+	/// and background of text. Additionally, a range of DBCS flags was specified with the
+	/// COMMON_LVB prefix. Historically, these flags only functioned in DBCS code pages for
+	/// Chinese, Japanese, and Korean languages. With exception of the leading byte and trailing
+	/// byte flags, the remaining flags describing line drawing and reverse video
+	/// (swap foreground and background colors) can be useful for other languages to emphasize
+	/// portions of output.
+	/// <para></para> With exception of the leading byte and trailing byte flags,
+	/// the remaining flags describing line drawing and reverse video(swap foreground and
+	/// background colors) can be useful for other languages to emphasize portions of output.
+	/// <para></para> Setting this console mode flag will allow these attributes to be used
+	/// in every code page on every language.
+	/// <para></para> It is off by default to maintain compatibility with known applications
+	/// that have historically taken advantage of the console ignoring these flags on
+	/// non-CJK machines to store bits in these fields for their own purposes or by accident.
+	/// <para></para> Note that using the <see cref="VirtualTerminalProcessing"/>
+	/// mode can result in LVB grid and reverse video flags being set while this flag is
+	/// still off if the attached application requests underlining or inverse video via
+	/// Console Virtual Terminal Sequences.
+	/// </summary>
 	LvbGridWorldwide = (int) ENABLE_LVB_GRID_WORLDWIDE
 }
+/// <summary>
+/// Possible values for <see cref="Win32Console.SetConsoleInputMode"/> parameter. Can be combined.
+/// </summary>
 [Flags]
 public enum ConsoleInputMode {
 	None = 0,
+	/// <summary>
+	/// Console mode appliable to input handle. Required for <see cref="QuickEditMode"/> and
+	/// <see cref="InsertMode"/>
+	/// </summary>
 	ExtendedFlags = (int) ENABLE_EXTENDED_FLAGS,
+	/// <summary>
+	/// Console mode appliable to input handle. Characters read by the
+	/// <see cref="Win32Console.Read"/> function are written to the active screen buffer as they
+	/// are read. This mode can be used only if the <see cref="LineInput"/> mode is also enabled.
+	/// </summary>
 	EchoInput = (int) ENABLE_ECHO_INPUT,
+	/// <summary>
+	/// Console mode appliable to input handle. When enabled, text entered in a console
+	/// window will be inserted at the current cursor location and all text following that
+	/// location will not be overwritten. When disabled, all following text will be
+	/// overwritten.
+	/// </summary>
 	InsertMode = (int) ENABLE_INSERT_MODE,
+	/// <summary>
+	/// Console mode appliable to input handle. The <see cref="Win32Console.Read"/> function
+	/// returns only when a carriage return character is read. If this mode is disabled,
+	/// the functions return when one or more characters are available.
+	/// </summary>
 	LineInput = (int) ENABLE_LINE_INPUT,
+	/// <summary>
+	/// Console mode appliable to input handle. If the mouse pointer is within the borders
+	/// of the console window and the window has the keyboard focus, mouse events
+	/// generated by mouse movement and button presses are placed in the input buffer.
+	/// These events are discarded by <see cref="Win32Console.Read"/>, even when this mode
+	/// is enabled.
+	/// </summary>
 	MouseInput = (int) ENABLE_MOUSE_INPUT,
+	/// <summary>
+	/// Console mode appliable to input handle. CTRL+C is processed by the system and is
+	/// not placed in the input buffer. If the input buffer is being read by
+	/// <see cref="Win32Console.Read"/>, other control keys are processed by the system and are
+	/// not returned in the <see cref="Win32Console.Read"/> buffer. If the
+	/// <see cref="LineInput"/> mode is also enabled, backspace, carriage return,
+	/// and line feed characters are handled by the system.
+	/// </summary>
 	ProcessedInput = (int) ENABLE_PROCESSED_INPUT,
+	/// <summary>
+	/// Console mode appliable to input handle. This flag enables the user to use the
+	/// mouse to select and edit text. Requires <see cref="ExtendedFlags"/>.
+	/// </summary>
 	QuickEditMode = (int) ENABLE_QUICK_EDIT_MODE,
+	/// <summary>
+	/// Console mode appliable to input handle. User interactions that change the size of
+	/// the console screen buffer are reported in the console's input buffer.
+	/// Information about these events can be read from the input buffer by applications
+	/// using the <see cref="Win32Console.NextInputEvent"/> function, but not by those using
+	/// <see cref="Win32Console.Read"/>.
+	/// </summary>
 	WindowInput = (int) ENABLE_WINDOW_INPUT,
+	/// <summary>
+	/// Console mode appliable to input handle. Setting this flag directs the Virtual
+	/// Terminal processing engine to convert user input received by the console window
+	/// into Console Virtual Terminal Sequences that can be retrieved by a supporting
+	/// application through <see cref="Win32Console.Write(object)"/> functions.
+	/// <para></para> The typical usage of this flag is intended in conjunction with
+	/// <see cref="ConsoleOutputMode.VirtualTerminalProcessing"/> on the output handle to connect
+	/// to an application that communicates exclusively via virtual terminal sequences.
+	/// </summary>
 	VirtualTerminalInput = (int) ENABLE_VIRTUAL_TERMINAL_INPUT
 }
+/// <summary>
+/// General interface for <see cref="KeyInputEvent"/>, <see cref="MouseInputEvent"/> and
+/// <see cref="WindowBufferSizeInputEvent"/>
+/// </summary>
 public interface IInputEvent { }
+/// <summary>
+/// Control key state values for <see cref="KeyInputEvent.ControlKeyState"/> and
+/// <see cref="MouseInputEvent.ControlKeyState"/>. Can be combined.
+/// </summary>
 [Flags]
 public enum ControlKeyState {
 	None = 0,
+	/// <summary>
+	/// The CAPS LOCK light is on.
+	/// </summary>
 	CapsLock = (int) CAPSLOCK_ON,
+	/// <summary>
+	/// The key is enhanced.
+	/// </summary>
 	Enhanced = (int) ENHANCED_KEY,
+	/// <summary>
+	/// The left ALT key is pressed.
+	/// </summary>
 	LeftAlt = (int) LEFT_ALT_PRESSED,
+	/// <summary>
+	/// The left CTRL key is pressed.
+	/// </summary>
 	LeftCtrl = (int) LEFT_CTRL_PRESSED,
+	/// <summary>
+	/// The NUM LOCK light is on.
+	/// </summary>
 	NumLock = (int) NUMLOCK_ON,
+	/// <summary>
+	/// The right ALT key is pressed.
+	/// </summary>
 	RightAlt = (int) RIGHT_ALT_PRESSED,
+	/// <summary>
+	/// The right CTRL key is pressed.
+	/// </summary>
 	RightCtrl = (int) RIGHT_CTRL_PRESSED,
+	/// <summary>
+	/// The SCROLL LOCK light is on.
+	/// </summary>
 	ScrollLock = (int) SCROLLLOCK_ON,
+	/// <summary>
+	/// The SHIFT key is pressed.
+	/// </summary>
 	Shift = (int) SHIFT_PRESSED
 }
+/// <summary>
+/// Values for <see cref="MouseInputEvent.Type"/>.
+/// </summary>
 [Flags]
 public enum MouseInputEventType {
 	Click = 0,
+	/// <summary>
+	/// The second click (button press) of a double-click occurred. The first click is returned
+	/// as a regular button-press event <see cref="Click"/>.
+	/// </summary>
 	DoubleClick = (int) DOUBLE_CLICK,
+	/// <summary>
+	/// The horizontal mouse wheel was moved.
+	/// </summary>
 	HorizontalWheel = (int) MOUSE_HWHEELED,
+	/// <summary>
+	/// A change in mouse position occurred.
+	/// </summary>
 	Moved = (int) MOUSE_MOVED,
+	/// <summary>
+	/// The vertical mouse wheel was moved.
+	/// </summary>
 	VerticalWheel = (int) MOUSE_WHEELED
 }
+/// <summary>
+/// Key input event received from <see cref="Win32Console.NextInputEvent"/>
+/// </summary>
 public class KeyInputEvent : IInputEvent {
+	/// <summary>
+	/// Whether key has been pressed or released
+	/// </summary>
 	public bool IsKeyDown { get; }
+	/// <summary>
+	/// Amount of times key has been pressed
+	/// </summary>
 	public int RepeatCount { get; }
+	/// <summary>
+	/// Virtual key code of key pressed
+	/// </summary>
 	public uint KeyCode { get; }
+	/// <summary>
+	/// Virtual scan code received from hardware
+	/// </summary>
 	public uint ScanCode { get; }
+	/// <summary>
+	/// Unicode character assigned to key
+	/// </summary>
 	public char Char { get; }
+	/// <summary>
+	/// Control key's states info
+	/// </summary>
 	public ControlKeyState ControlKeyState { get; }
+
+	/// <summary>
+	/// Wraps unmanaged event structure
+	/// </summary>
+	/// <param name="native">Unmanaged event structure</param>
 	public KeyInputEvent(KEY_EVENT_RECORD native) {
 		IsKeyDown = native.bKeyDown;
 		RepeatCount = native.wRepeatCount;
@@ -1646,16 +2455,57 @@ public class KeyInputEvent : IInputEvent {
 		ControlKeyState = (ControlKeyState) native.dwControlKeyState;
 	}
 }
+/// <summary>
+/// Mouse input event received from <see cref="Win32Console.NextInputEvent"/>
+/// </summary>
 public class MouseInputEvent : IInputEvent {
+	/// <summary>
+	/// Mouse horizontal position when event occured in terms of the screen buffer's
+	/// character-cell coordinates.
+	/// </summary>
 	public int MouseX { get; }
+	/// <summary>
+	/// Mouse vertical position when event occured in terms of the screen buffer's
+	/// character-cell coordinates.
+	/// </summary>
 	public int MouseY { get; }
+	/// <summary>
+	/// True, if left mouse button is down
+	/// </summary>
 	public bool LeftButton { get; }
+	/// <summary>
+	/// True, if middle mouse button is down
+	/// </summary>
 	public bool MiddleButton { get; }
+	/// <summary>
+	/// True, if right mouse button is down
+	/// </summary>
 	public bool RightButton { get; }
+	/// <summary>
+	/// True, if first mouse XButton is down
+	/// </summary>
 	public bool XButton1 { get; }
+	/// <summary>
+	/// True, if second mouse XButton is down
+	/// </summary>
 	public bool XButton2 { get; }
+	/// <summary>
+	/// Wheel change amount. Positive, if wheeled right or forward
+	/// </summary>
+	public int Wheel { get; }
+	/// <summary>
+	/// Control key's states info
+	/// </summary>
 	public ControlKeyState ControlKeyState { get; }
+	/// <summary>
+	/// The type of event
+	/// </summary>
 	public MouseInputEventType Type { get; }
+
+	/// <summary>
+	/// Wraps unmanaged event structure
+	/// </summary>
+	/// <param name="native">Unmanaged event structure</param>
 	public MouseInputEvent(MOUSE_EVENT_RECORD native) {
 		MouseX = native.dwMousePosition.X;
 		MouseY = native.dwMousePosition.Y;
@@ -1666,11 +2516,26 @@ public class MouseInputEvent : IInputEvent {
 		XButton2 = (native.dwButtonState & FROM_LEFT_4TH_BUTTON_PRESSED) > 0;
 		ControlKeyState = (ControlKeyState) native.dwControlKeyState;
 		Type = (MouseInputEventType) native.dwEventFlags;
+		Wheel = unchecked((int)(native.dwButtonState & 0xFFFF0000U));
 	}
 }
+/// <summary>
+/// Window buffer size input event received from <see cref="Win32Console.NextInputEvent"/>
+/// </summary>
 public class WindowBufferSizeInputEvent : IInputEvent {
+	/// <summary>
+	/// Console screen buffer width in character-cell terms
+	/// </summary>
 	public int Width { get; }
+	/// <summary>
+	/// Console screen buffer height in character-cell terms
+	/// </summary>
 	public int Height { get; }
+
+	/// <summary>
+	/// Wraps unmanaged event structure
+	/// </summary>
+	/// <param name="native">Unmanaged event structure</param>
 	public WindowBufferSizeInputEvent(WINDOW_BUFFER_SIZE_RECORD native) {
 		Width = native.dwSize.X;
 		Height = native.dwSize.Y;
