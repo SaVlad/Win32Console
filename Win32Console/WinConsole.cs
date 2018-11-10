@@ -461,6 +461,25 @@ public static class Win32Console {
 			ThrowWin32("Failed to write console output character");
 	}
 	/// <summary>
+	/// Writes character to cursorc cell without moving cursor and changes its color
+	/// </summary>
+	/// <param name="c">Character to write</param>
+	/// <param name="fore">Foreground color</param>
+	/// <param name="back">Background color</param>
+	public static void PutChar(char c, ConsoleColor fore, ConsoleColor back) => PutChar(CursorX, CursorY, c, fore, back);
+	/// <summary>
+	/// Writes character to specified cell without moving cursor and changes its color
+	/// </summary>
+	/// <param name="x">Cell column</param>
+	/// <param name="y">Cell row</param>
+	/// <param name="c">Character to write</param>
+	/// <param name="fore">Foreground color</param>
+	/// <param name="back">Background color</param>
+	public static void PutChar(short x, short y, char c, ConsoleColor fore, ConsoleColor back) {
+		SetColor(x, y, fore, back);
+		PutChar(x, y, c);
+	}
+	/// <summary>
 	/// Writes string starting from current cell without advancing cursor position.
 	/// Note that this function support control characters: \r, \n, \b, \f, \0
 	/// </summary>
